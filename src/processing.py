@@ -17,10 +17,11 @@ def load_pickle(file_path: str)  ->  Dict:
         logger.info(f"Data loaded successfully from {file_path}")
         return data
     except Exception as e:
-        logger.error(f"Error loading data from {file_path}: {e}")
+        logger.error(f"Error loading data from: {file_path}: {e}")
         raise
 
-def flatten_data(file_path: str, expected_dim: int = 320) -> pd.DataFrame:
+def flatten_data(file_path: str, 
+                 expected_dim: int = 320) -> pd.DataFrame:
     """ Flattens the hierarchical dictionary into a pandas DataFrame and 
     performs data integrity checks. """
     # Load the raw data
@@ -64,7 +65,9 @@ def flatten_data(file_path: str, expected_dim: int = 320) -> pd.DataFrame:
 
     return pd.DataFrame(records)
 
-def plot_syndrome_distribution(df: pd.DataFrame, output_dir: str = "reports/figures/", show: bool = False) -> None:
+def plot_syndrome_distribution(df: pd.DataFrame, 
+                               output_dir: str = "reports/figures/", 
+                               show: bool = False) -> None:
     """Plots the distribution of images per syndrome and saves the plot to the specified directory."""
     # Ensure the output directory exists
     output_dir = Path(output_dir)
@@ -90,7 +93,7 @@ def plot_syndrome_distribution(df: pd.DataFrame, output_dir: str = "reports/figu
 
     # Show the plot if requested
     if show:
-        plt.show()
+        fig.show()
 
 
 if __name__ == "__main__":
