@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
 
 import logging
 
@@ -42,6 +44,21 @@ def f1_score(y_true: np.ndarray,
         
     return float(np.mean(f1_scores))
 
+def multiclass_auc(y_true: np.ndarray, 
+                   y_probabilities: np.ndarray,
+                   classes: np.ndarray) -> float:
+    """Calculates the multiclass AUC using the One-vs-Rest approach."""
+    y_true_binarized = label_binarize(y_true, classes=classes)
+    
+    # Calculate AUC for each class
+    auc_scores = []
+    for i in range(len(classes)):
+        fpr, tpr, _ = roc_curve(y_true_binarized[:, i], y_probabilities[:, i])
+        auc_score = auc(fpr, tpr)
+        auc_scores.append(auc_score)
+
+    return float(np.mean(auc_scores))
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
@@ -56,5 +73,10 @@ if __name__ == "__main__":
 
     # accuracy = top_k_accuracy(y_true, y_probabilities, classes, k)
     # print(f"Top-{k} Accuracy: {accuracy:.4f}")
-    f1_score_value = f1_score(y_true, y_predict)
-    print(f"F1 Score: {f1_score_value:.4f}")
+
+    # f1_score_value = f1_score(y_true, y_predict)
+    # print(f"F1 Score: {f1_score_value:.4f}")
+
+    auc_value = multiclass_auc(y_true, y_probabilities, classes)
+    print(f"Multiclass AUC: {auc_value:.4f}")
+
