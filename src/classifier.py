@@ -15,8 +15,8 @@ def evaluate_knn(data: pd.DataFrame,
     """Evaluates KNN classifier performance for different values of k using cross-validation."""
     # Prepare data
     X = np.stack(data["embedding"].values)
-    y = data["syndrome_id"].values
-    groups = data["subject_id"].values
+    y = np.stack(data["syndrome_id"].values)
+    groups = np.stack(data["subject_id"].values)
 
     # Initialize cross-validator
     cv = StratifiedGroupKFold(n_splits=n_splits, 

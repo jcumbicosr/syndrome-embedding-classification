@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
+from typing import Dict, List
 
 import logging
 
@@ -59,17 +60,49 @@ def multiclass_auc(y_true: np.ndarray,
 
     return float(np.mean(auc_scores))
 
+def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]], 
+                     topk_value: int,) -> Dict[int, Dict[str, float]]:
+    """Evaluates metrics for each value of k."""
+    summary = {}
+    for k, fold_results in results.items():
+        topk_score = []
+        f1_scores = []
+        auc_scores = []
+        
+        for fold in fold_results:
+            y_true = fold["y_true"]
+            y_predict = fold["y_predict"]
+            y_probabilities = fold["y_probabilities"]
+            classes = fold['labels']
+
+            topk_score.append(top_k_accuracy(y_true, y_probabilities, classes, topk_value))
+            f1_scores.append(f1_score(y_true, y_predict))
+            auc_scores.append(multiclass_auc(y_true, y_probabilities, classes))
+
+        summary[k] = {
+            "topk_score": float(np.mean(topk_score)),
+            "f1_score": float(np.mean(f1_scores)),
+            "auc_score": float(np.mean(auc_scores))}
+    
+    return summary
+
 if __name__ == "__main__":
+    from processing import flatten_data
+    from classifier import evaluate_knn
     logging.basicConfig(level=logging.INFO)
 
+    df = flatten_data('data/mini_gm_public_v0.1.p')
+    knn_results = evaluate_knn(df, distance_metric='cosine')
+    metrics_summary = evaluate_metrics(knn_results, topk_value=3)
+
     # Example usage
-    y_true = np.array([0, 1, 2])
-    y_predict = np.array([1, 1, 2])
-    y_probabilities = np.array([[0.1, 0.7, 0.2],
-                                [0.3, 0.4, 0.3],
-                                [0.2, 0.2, 0.6]])
-    classes = np.array([0, 1, 2])
-    k = 2
+    # y_true = np.array([0, 1, 2])
+    # y_predict = np.array([1, 1, 2])
+    # y_probabilities = np.array([[0.1, 0.7, 0.2],
+    #                             [0.3, 0.4, 0.3],
+    #                             [0.2, 0.2, 0.6]])
+    # classes = np.array([0, 1, 2])
+    # k = 2
 
     # accuracy = top_k_accuracy(y_true, y_probabilities, classes, k)
     # print(f"Top-{k} Accuracy: {accuracy:.4f}")
@@ -77,6 +110,6 @@ if __name__ == "__main__":
     # f1_score_value = f1_score(y_true, y_predict)
     # print(f"F1 Score: {f1_score_value:.4f}")
 
-    auc_value = multiclass_auc(y_true, y_probabilities, classes)
-    print(f"Multiclass AUC: {auc_value:.4f}")
+    # auc_value = multiclass_auc(y_true, y_probabilities, classes)
+    # print(f"Multiclass AUC: {auc_value:.4f}")
 
