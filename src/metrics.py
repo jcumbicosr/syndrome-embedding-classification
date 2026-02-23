@@ -17,16 +17,44 @@ def top_k_accuracy(y_true: np.ndarray,
     hits = np.any(top_k_classes == y_true[:, np.newaxis], axis=1)
     return float(np.mean(hits))
 
+def f1_score(y_true: np.ndarray, 
+             y_predict: np.ndarray) -> float:
+    """Calculates the F1 score."""
+    labels = np.unique(y_true)
+    f1_scores = []
+    for c in labels:
+        # Calculate TP, FP, FN for the current class 'c'
+        tp = np.sum((y_true == c) & (y_predict == c))
+        fp = np.sum((y_true != c) & (y_predict == c))
+        fn = np.sum((y_true == c) & (y_predict != c))
+        
+        # Calculate Precision and Recall with safe division (avoiding division by zero)
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        
+        # Calculate F1-Score for class 'c'
+        if precision + recall > 0:
+            f1 = 2 * (precision * recall) / (precision + recall)
+        else:
+            f1 = 0.0
+            
+        f1_scores.append(f1)
+        
+    return float(np.mean(f1_scores))
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     # Example usage
     y_true = np.array([0, 1, 2])
+    y_predict = np.array([1, 1, 2])
     y_probabilities = np.array([[0.1, 0.7, 0.2],
                                 [0.3, 0.4, 0.3],
                                 [0.2, 0.2, 0.6]])
     classes = np.array([0, 1, 2])
     k = 2
 
-    accuracy = top_k_accuracy(y_true, y_probabilities, classes, k)
-    print(f"Top-{k} Accuracy: {accuracy:.4f}")
+    # accuracy = top_k_accuracy(y_true, y_probabilities, classes, k)
+    # print(f"Top-{k} Accuracy: {accuracy:.4f}")
+    f1_score_value = f1_score(y_true, y_predict)
+    print(f"F1 Score: {f1_score_value:.4f}")
