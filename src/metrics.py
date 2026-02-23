@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from typing import Dict, List
@@ -86,6 +89,55 @@ def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]],
     
     return summary
 
+def plot_best_k(
+    results: Dict[int, Dict[str, float]],
+    metric: str = "f1_score",
+    output_dir: str = "reports/figures/",
+    show: bool = False
+) -> int:
+    """
+    Plots performance vs k and returns the best k value.
+    """
+    x = sorted(results.keys())
+    y = [results[k][metric] for k in x]
+
+    # Get the best k value
+    best_k = x[np.argmax(y)]
+    best_metric = max(y)
+    logger.info(f"Best k: {best_k} with {metric}: {best_metric}")
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(x, y, marker='o', linewidth=2)
+    ax.scatter(best_k, best_metric, s=100)
+
+    ax.set_xlabel("Number of Neighbors (k)", fontsize=14)
+    ax.set_ylabel(metric.replace("_", " ").title(), fontsize=14)
+    ax.set_title("KNN Performance vs k", fontsize=16)
+    ax.grid(alpha=0.3)
+
+    # Highlight best k
+    ax.annotate(
+        f"Best k = {best_k}\n{metric.replace('_', ' ').title()} = {best_metric:.2f}",
+        xy=(best_k, best_metric),
+        xytext=(best_k * 0.98, best_metric * 0.98),
+    )
+
+    # Save figure
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    fig_path = output_path / f"knn_{metric}_vs_k.png"
+    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+
+    logger.info(f"Best k plot saved to: {fig_path}")
+
+    if show:
+        plt.show()
+    
+    return best_k
+
+
 if __name__ == "__main__":
     from processing import flatten_data
     from classifier import evaluate_knn
@@ -94,6 +146,7 @@ if __name__ == "__main__":
     df = flatten_data('data/mini_gm_public_v0.1.p')
     knn_results = evaluate_knn(df, distance_metric='cosine')
     metrics_summary = evaluate_metrics(knn_results, topk_value=3)
+    best_k = plot_best_k(metrics_summary, metric="f1_score")
 
     # Example usage
     # y_true = np.array([0, 1, 2])
