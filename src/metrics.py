@@ -1,10 +1,10 @@
-from pathlib import Path
-
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from typing import Dict, List
+from pathlib import Path
 
 import logging
 
@@ -64,13 +64,14 @@ def multiclass_auc(y_true: np.ndarray,
     return float(np.mean(auc_scores))
 
 def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]], 
-                     topk_value: int,) -> Dict[int, Dict[str, float]]:
+                     topk_values: List[int],
+) -> pd.DataFrame:
     """Evaluates metrics for each value of k."""
     summary = {}
     for k, fold_results in results.items():
-        topk_score = []
         f1_scores = []
         auc_scores = []
+        topk_scores = {tk: [] for tk in topk_values}
         
         for fold in fold_results:
             y_true = fold["y_true"]
@@ -78,56 +79,76 @@ def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]],
             y_probabilities = fold["y_probabilities"]
             classes = fold['labels']
 
-            topk_score.append(top_k_accuracy(y_true, y_probabilities, classes, topk_value))
             f1_scores.append(f1_score(y_true, y_predict))
             auc_scores.append(multiclass_auc(y_true, y_probabilities, classes))
+            for tk in topk_values:
+                topk_scores[tk].append(top_k_accuracy(y_true, y_probabilities, classes, tk))
 
         summary[k] = {
-            "topk_score": float(np.mean(topk_score)),
             "f1_score": float(np.mean(f1_scores)),
-            "auc_score": float(np.mean(auc_scores))}
-    
-    return summary
+            "auc_score": float(np.mean(auc_scores)),
+            **{f"topk_{tk}": float(np.mean(topk_scores[tk])) for tk in topk_values}
+        }
+
+    # Convert to DataFrame for better visualization
+    summary_df = pd.DataFrame.from_dict(summary, orient='index')  
+    summary_df.index.name = 'k'
+
+    return summary_df
 
 def plot_best_k(
-    results: Dict[int, Dict[str, float]],
-    metric: str = "f1_score",
+    results: pd.DataFrame,
+    metrics: List[str] = None,
     output_dir: str = "reports/figures/",
     show: bool = False
-) -> int:
+) -> Dict[str, int]:
     """
     Plots performance vs k and returns the best k value.
     """
-    x = sorted(results.keys())
-    y = [results[k][metric] for k in x]
+    # Select the metrics to plot
+    plot_data = results
+    if metrics is not None:
+        plot_data = plot_data[metrics]
 
     # Get the best k value
-    best_k = x[np.argmax(y)]
-    best_metric = max(y)
-    logger.info(f"Best k: {best_k} with {metric}: {best_metric}")
+    df_best = pd.DataFrame({
+        "best_value": plot_data.max(),
+        "best_k": plot_data.idxmax(),
+    })
+    for row in df_best.itertuples():
+        logger.info(f"Best k for {row.Index}: {row.best_k} with value {row.best_value:.4f}")
+
 
     # Plot
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(x, y, marker='o', linewidth=2)
-    ax.scatter(best_k, best_metric, s=100)
+    results.plot(ax=ax, marker='o', linewidth=2)
 
+    # Highlight best k for each metric
+    colors = [line.get_color() for line in ax.get_lines()]
+    for (metric, row), color in zip(df_best.iterrows(), colors):
+        ax.scatter(
+            row["best_k"], row["best_value"],
+            color=color, s=100, zorder=5, edgecolors="black", linewidths=1.5
+        )
+
+    # Update legend with best k info
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = [
+        f"{label} (k={int(df_best.loc[label, 'best_k'])}, {df_best.loc[label, 'best_value']:.2f})"
+        for label in labels
+    ]
+    ax.legend(handles, new_labels, fontsize=10)
+    
+    # Format axes
     ax.set_xlabel("Number of Neighbors (k)", fontsize=14)
-    ax.set_ylabel(metric.replace("_", " ").title(), fontsize=14)
     ax.set_title("KNN Performance vs k", fontsize=16)
     ax.grid(alpha=0.3)
-
-    # Highlight best k
-    ax.annotate(
-        f"Best k = {best_k}\n{metric.replace('_', ' ').title()} = {best_metric:.2f}",
-        xy=(best_k, best_metric),
-        xytext=(best_k * 0.98, best_metric * 0.98),
-    )
 
     # Save figure
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    fig_path = output_path / f"knn_{metric}_vs_k.png"
+    fig_path = output_path / f"metrics_vs_k.png"
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
 
     logger.info(f"Best k plot saved to: {fig_path}")
@@ -135,7 +156,7 @@ def plot_best_k(
     if show:
         plt.show()
     
-    return best_k
+    return df_best["best_k"].to_dict()
 
 
 if __name__ == "__main__":
@@ -144,9 +165,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     df = flatten_data('data/mini_gm_public_v0.1.p')
-    knn_results = evaluate_knn(df, distance_metric='cosine')
-    metrics_summary = evaluate_metrics(knn_results, topk_value=3)
-    best_k = plot_best_k(metrics_summary, metric="f1_score")
+    results_cosine = evaluate_knn(df, distance_metric='cosine')
+    cosine_summary = evaluate_metrics(results_cosine, topk_values=[1, 3, 5])
+    best_k_cosine = plot_best_k(cosine_summary)
+
+    results_euclidean = evaluate_knn(df, distance_metric='euclidean')
+    euclidean_summary = evaluate_metrics(results_euclidean, topk_values=[1, 3, 5])
+    best_k_euclidean = plot_best_k(euclidean_summary, metric="f1_score")
+    print("Done.")
 
     # Example usage
     # y_true = np.array([0, 1, 2])
