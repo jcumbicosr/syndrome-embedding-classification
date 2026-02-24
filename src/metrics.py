@@ -65,6 +65,8 @@ def multiclass_auc(y_true: np.ndarray,
 
 def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]], 
                      topk_values: List[int],
+                     tag: str,
+                     output_dir: str = "reports/tables/"
 ) -> pd.DataFrame:
     """Evaluates metrics for each value of k."""
     summary = {}
@@ -94,10 +96,18 @@ def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]],
     summary_df = pd.DataFrame.from_dict(summary, orient='index')  
     summary_df.index.name = 'k'
 
+    # Save summary table
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    table_path = output_path / f"metrics_summary_{tag}.csv"
+    summary_df.to_csv(table_path)
+    logger.info(f"Metrics summary saved to: {table_path}")
+
     return summary_df
 
 def plot_best_k(
     results: pd.DataFrame,
+    tag: str,
     metrics: List[str] = None,
     output_dir: str = "reports/figures/",
     show: bool = False
@@ -147,8 +157,7 @@ def plot_best_k(
     # Save figure
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
-    fig_path = output_path / f"metrics_vs_k.png"
+    fig_path = output_path / f"metrics_vs_k_{tag}.png"
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
 
     logger.info(f"Best k plot saved to: {fig_path}")
@@ -166,12 +175,12 @@ if __name__ == "__main__":
 
     df = flatten_data('data/mini_gm_public_v0.1.p')
     results_cosine = evaluate_knn(df, distance_metric='cosine')
-    cosine_summary = evaluate_metrics(results_cosine, topk_values=[1, 3, 5])
-    best_k_cosine = plot_best_k(cosine_summary)
+    cosine_summary = evaluate_metrics(results_cosine, topk_values=[1, 3, 5], tag="cosine")
+    best_k_cosine = plot_best_k(cosine_summary, tag="cosine")
 
     results_euclidean = evaluate_knn(df, distance_metric='euclidean')
-    euclidean_summary = evaluate_metrics(results_euclidean, topk_values=[1, 3, 5])
-    best_k_euclidean = plot_best_k(euclidean_summary, metric="f1_score")
+    euclidean_summary = evaluate_metrics(results_euclidean, topk_values=[1, 3, 5], tag="euclidean")
+    best_k_euclidean = plot_best_k(euclidean_summary, tag="euclidean")
     print("Done.")
 
     # Example usage
