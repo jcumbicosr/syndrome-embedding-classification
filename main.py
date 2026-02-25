@@ -22,8 +22,10 @@ logger = logging.getLogger("MainPipeline")
 def run_app(
     data_path: str = 'data/mini_gm_public_v0.1.p',
     output_dir: str = 'results',
+    k_values: list = list(range(1, 16)),
     perperplexity: int = 30,
     n_splits: int = 10,
+    topk_values: list = [1, 3, 5],
     random_state: int = 2,
     show_plots: int = 0,
 ) -> None:
@@ -32,8 +34,10 @@ def run_app(
     Args:
         data_path: Path to the input data file (pickle format).
         output_dir: Directory to save all outputs (figures and tables).
+        k_values: List of k values to evaluate for KNN classification.
         perperplexity: Perplexity parameter for t-SNE visualization.
         n_splits: Number of splits for cross-validation.
+        topk_values: List of top-k values to evaluate for metrics.
         random_state: Random state for reproducibility.
         show_plots: Whether to display plots interactively (0 = no, 1 = yes).
     """
@@ -56,14 +60,14 @@ def run_app(
 
 
     logger.info("--- Step 3: KNN Classification (Cosine Distance)---")
-    results_cosine = evaluate_knn(df, distance_metric='cosine', n_splits=n_splits, random_state=random_state)
-    cosine_summary = evaluate_metrics(results_cosine, topk_values=[1, 3, 5], tag="cosine", output_dir=output_tab)
+    results_cosine = evaluate_knn(df, k_values=k_values, distance_metric='cosine', n_splits=n_splits, random_state=random_state)
+    cosine_summary = evaluate_metrics(results_cosine, topk_values=topk_values, tag="cosine", output_dir=output_tab)
     best_k_cosine_dict = plot_best_k(cosine_summary, tag="cosine", output_dir=output_fig, show=bool(show_plots))
 
 
     logger.info("--- Step 4: KNN Classification (Euclidean Distance)---")
-    results_euclidean = evaluate_knn(df, distance_metric='euclidean', n_splits=n_splits, random_state=random_state)
-    euclidean_summary = evaluate_metrics(results_euclidean, topk_values=[1, 3, 5], tag="euclidean", output_dir=output_tab)
+    results_euclidean = evaluate_knn(df, k_values=k_values, distance_metric='euclidean', n_splits=n_splits, random_state=random_state)
+    euclidean_summary = evaluate_metrics(results_euclidean, topk_values=topk_values, tag="euclidean", output_dir=output_tab)
     best_k_euclidean_dict = plot_best_k(euclidean_summary, tag="euclidean", output_dir=output_fig, show=bool(show_plots))
 
     logger.info("--- Step 5: Comparative ROC Analysis ---")
