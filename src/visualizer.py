@@ -12,7 +12,7 @@ def visualize_embeddings(data: pd.DataFrame,
                          perplexity: int=30, 
                          n_iter: int=1000,
                          random_state: int=2,
-                         output_path: str = "reports/figures/",
+                         output_path: str = "results/figures/",
                          show: bool = False ) -> None:
     """Reduces embeddings to 2D using t-SNE and plots them"""
 

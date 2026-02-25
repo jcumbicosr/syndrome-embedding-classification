@@ -66,7 +66,7 @@ def multiclass_auc(y_true: np.ndarray,
 def evaluate_metrics(results: Dict[int, List[Dict[str, np.ndarray]]], 
                      topk_values: List[int],
                      tag: str,
-                     output_dir: str = "reports/tables/"
+                     output_dir: str = "results/tables/"
 ) -> pd.DataFrame:
     """Evaluates metrics for each value of k."""
     summary = {}
@@ -109,7 +109,7 @@ def plot_best_k(
     results: pd.DataFrame,
     tag: str,
     metrics: List[str] = None,
-    output_dir: str = "reports/figures/",
+    output_dir: str = "results/figures/",
     show: bool = False
 ) -> Dict[str, int]:
     """
@@ -201,7 +201,7 @@ def plot_comparative_roc(results_euclidean: Dict[int, List[Dict[str, np.ndarray]
                          results_cosine: Dict[int, List[Dict[str, np.ndarray]]],
                          best_k_euclidean: int,
                          best_k_cosine: int,
-                         output_dir: str = "reports/figures/",
+                         output_dir: str = "results/figures/",
                          show: bool = False
 ) -> None:
     """Plots comparative ROC curves for Euclidean and Cosine distance metrics."""

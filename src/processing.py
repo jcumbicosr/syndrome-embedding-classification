@@ -66,7 +66,7 @@ def flatten_data(file_path: str,
     return pd.DataFrame(records)
 
 def plot_syndrome_distribution(df: pd.DataFrame, 
-                               output_dir: str = "reports/figures/", 
+                               output_dir: str = "results/figures/", 
                                show: bool = False) -> None:
     """Plots the distribution of images per syndrome and saves the plot to the specified directory."""
     # Ensure the output directory exists
