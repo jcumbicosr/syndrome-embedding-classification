@@ -167,6 +167,75 @@ def plot_best_k(
     
     return df_best["best_k"].to_dict()
 
+def average_roc_curve(fold_results: List[Dict[str, np.ndarray]]) -> Dict[str, np.ndarray]:
+    """Calculates the average ROC curve for multiclass classification."""
+    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []
+    aucs = []
+
+    for fold in fold_results:
+        y_true = fold["y_true"]
+        y_proba = fold["y_probabilities"]
+        classes = fold["labels"]
+
+        # Binarize labels for multi-class ROC calculation
+        y_true_bin = label_binarize(y_true, classes=classes)
+
+        # Compute micro-average ROC curve for this specific fold
+        fpr, tpr, _ = roc_curve(y_true_bin.ravel(), y_proba.ravel())
+
+        # Interpolate the True Positive Rate
+        interp_tpr = np.interp(mean_fpr, fpr, tpr)
+        interp_tpr[0] = 0.0
+        tprs.append(interp_tpr)
+        aucs.append(auc(fpr, tpr))
+    
+    # Average the True Positive Rates and AUCs across all folds
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = np.mean(aucs)
+
+    return mean_fpr, mean_tpr, mean_auc
+
+def plot_comparative_roc(results_euclidean: Dict[int, List[Dict[str, np.ndarray]]], 
+                         results_cosine: Dict[int, List[Dict[str, np.ndarray]]],
+                         best_k_euclidean: int,
+                         best_k_cosine: int,
+                         output_dir: str = "reports/figures/",
+                         show: bool = False
+) -> None:
+    """Plots comparative ROC curves for Euclidean and Cosine distance metrics."""
+    fpr_cos, tpr_cos, auc_cos = average_roc_curve(results_cosine[best_k_cosine])
+    fpr_euc, tpr_euc, auc_euc = average_roc_curve(results_euclidean[best_k_euclidean])
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(fpr_cos, tpr_cos, color='darkorange', lw=2,
+            label=f'Cosine (k={best_k_cosine}, Averaged AUC = {auc_cos:.3f})')
+    ax.plot(fpr_euc, tpr_euc, color='navy', lw=2,
+            label=f'Euclidean (k={best_k_euclidean}, Averaged AUC = {auc_euc:.3f})')
+    
+    # Add the random chance diagonal line
+    ax.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--', label='Random Chance')
+
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate', fontsize=14)
+    ax.set_ylabel('True Positive Rate', fontsize=14)
+    ax.set_title('Averaged Cross-Validation ROC Curves: Cosine vs Euclidean', fontsize=16)
+    ax.legend(loc="lower right", fontsize=12)
+    ax.grid(alpha=0.3)
+
+    # Save figure
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    fig_path = output_path / "comparative_roc.png"
+    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+    logger.info(f"Comparative ROC plot saved to: {fig_path}")
+
+    if show:
+        plt.show()
+    
 
 if __name__ == "__main__":
     from processing import flatten_data
@@ -181,6 +250,13 @@ if __name__ == "__main__":
     results_euclidean = evaluate_knn(df, distance_metric='euclidean')
     euclidean_summary = evaluate_metrics(results_euclidean, topk_values=[1, 3, 5], tag="euclidean")
     best_k_euclidean = plot_best_k(euclidean_summary, tag="euclidean")
+
+    plot_comparative_roc(results_euclidean=results_euclidean, 
+                         results_cosine=results_cosine, 
+                         best_k_euclidean=best_k_euclidean['auc_score'], 
+                         best_k_cosine=best_k_cosine['auc_score'])
+
+
     print("Done.")
 
     # Example usage
